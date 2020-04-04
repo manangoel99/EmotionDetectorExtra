@@ -11,7 +11,7 @@ from keras.models import load_model
 from preprocess import preprocess_input
 from utils import *
 
-ray.init(num_cpus=8, ignore_reinit_error=True)
+ray.init(num_cpus=8, num_gpus=1, ignore_reinit_error=True)
 time.sleep(2)
 
 @ray.remote
@@ -72,10 +72,8 @@ class Model(object):
     #             break
     #         all_emotions.append(self.predictFrame(frame))
     #     return all_emotions
-
-
-if __name__ == '__main__':
-    cap = cv2.VideoCapture("./testvdo.mp4")
+def process_vid(vid_path):
+    cap = cv2.VideoCapture(vid_path)
     all_emotions = []
     start = time.time()
     detect = Model.remote()
@@ -84,9 +82,16 @@ if __name__ == '__main__':
         if frame is None:
             break
         all_emotions.append(detect.predictFrame.remote(frame))
+
+    return all_emotions
+
+if __name__ == '__main__':
+    start = time.time()
+    emotions = process_vid("./testvdo.mp4")
     end = time.time()
     print("==================")
     print(end - start)
+    print(len(emotions))
     print("==================")
 
     # print(ray.get(all_emotions))
