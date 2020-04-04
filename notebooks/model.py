@@ -11,7 +11,7 @@ from keras.models import load_model
 from preprocess import preprocess_input
 from utils import *
 
-ray.init(num_cpus=8, num_gpus=1, ignore_reinit_error=True)
+ray.init(num_cpus=8, num_gpus=1, ignore_reinit_error=True, webui_host='0.0.0.0')
 time.sleep(2)
 
 @ray.remote
