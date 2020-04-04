@@ -6,19 +6,18 @@ import face_recognition
 import numpy as np
 import ray
 from imutils import face_utils
-from keras.models import load_model
 import glob
 from preprocess import preprocess_input
 from utils import *
 
-ray.init(num_cpus=8, num_gpus=1, ignore_reinit_error=True)
+ray.init(num_cpus=16, num_gpus=1)
 time.sleep(2)
 
 @ray.remote
 class Model(object):
-	from keras.models import load_model
 
 	def __init__(self):
+		from keras.models import load_model
 		emotion_model_path = './model.hdf5'
 		self.labels = {
 			0:'angry',
@@ -108,6 +107,7 @@ def process_vid(vid_path):
 
 def generate_emotion_video(ray_list,file_path):
 	cap = cv2.VideoCapture(file_path)
+	fps = cap.get(cv2.CAP_PROP_FPS)
 	while cap.isOpened():
 		ret,frame = cap.read()
 		if frame is None:
@@ -116,7 +116,8 @@ def generate_emotion_video(ray_list,file_path):
 		size = (width,height)
 		break
 	cap.release()
-	out = cv2.VideoWriter('emotion_video.avi',cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
+
+	out = cv2.VideoWriter('emotion_video.mp4',cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
 	for iterx in ray_list:
 		out.write(iterx[1])
 
@@ -129,5 +130,4 @@ if __name__ == '__main__':
 	print(len(emotions))
 	print("==================")
 	# get_emoji_video(emotions)
-	generate_emotion_video(ray.get(emotions),"./testvdo.mp4")
 	# print(ray.get(all_emotions))
