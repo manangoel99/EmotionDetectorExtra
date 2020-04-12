@@ -1,0 +1,43 @@
+version: '2'
+services:
+    web:
+        build: .
+        command: python manage.py run -h 0.0.0.0 -p 3000
+        ports:
+            - 3000:3000
+        env_file: .env
+        restart: always
+        volumes: 
+            - ./:/home/app
+        depends_on: 
+            - "db"
+    
+    redis:
+        image: "redis:alpine"
+    
+    db:
+        image: "postgres:12-alpine"
+        volumes: 
+            - postgres_data:/var/lib/postgresql/data/
+        environment: 
+            - POSTGRES_USER=hello_flask
+            - POSTGRES_PASSWORD=hello_flask
+            - POSTGRES_DB=hello_flask_dev
+
+    worker:
+        build:
+            context: .
+            args:
+                - "FLASK_ENV=development"
+        command: celery worker -l info -A server.celery --pool=threads --max-tasks-per-child=1 --max-memory-per-child=1024 --autoscale=10,3
+        depends_on: 
+            - "redis"
+            - "web"
+        env_file: 
+            - ".env"
+
+
+volumes:
+    redis: {}
+    postgres_data:
+      
