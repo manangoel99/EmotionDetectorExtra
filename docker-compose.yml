@@ -5,7 +5,6 @@ services:
         command: python manage.py run -h 0.0.0.0 -p 3000
         ports:
             - 3000:3000
-            - 8265:8265
         env_file: .env
         restart: always
         volumes: 
@@ -30,9 +29,10 @@ services:
             context: .
             args:
                 - "FLASK_ENV=development"
-        command: celery worker -B -l info -A server.celery --autoscale=10,3
+        command: celery worker -l info -A server.celery --pool=threads --max-tasks-per-child=1 --max-memory-per-child=1024 --autoscale=10,3
         depends_on: 
             - "redis"
+            - "web"
         env_file: 
             - ".env"
 
