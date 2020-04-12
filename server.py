@@ -108,7 +108,6 @@ def requires_auth(f):
 def home():
     return render_template('home.html')
 
-
 @app.route('/callback')
 def callback_handling():
     auth0.authorize_access_token()
@@ -158,17 +157,17 @@ def add_vid_path(self, video_id):
     db.session.add(vid)
     db.session.commit()
 
-def generate_emotion_video(ray_list, vid_path):
+def generate_emotion_video(ray_list, vid_path, size):
     cap = cv2.VideoCapture(vid_path)
     logging.info(vid_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    while cap.isOpened():
-        ret,frame = cap.read()
-        if frame is None:
-            break
-        height, width, layers = frame.shape
-        size = (width,height)
-        break
+    # while cap.isOpened():
+    #     ret,frame = cap.read()
+    #     if frame is None:
+    #         break
+    #     height, width, layers = frame.shape
+    #     size = (width,height)
+    #     break
     cap.release()
     out = cv2.VideoWriter(vid_path + '_emotion.mp4',cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
     ray_list = ray.get(ray_list)
@@ -260,12 +259,16 @@ def process_vid(vid_path):
     all_emotions = []
     detect = Model.remote()
     frames = []
+    size = None
     while cap.isOpened():
         ret, frame = cap.read()
+        height, width, layers = frame.shape
+        size = (width, height)
+
         if frame is None:
             break
         all_emotions.append(detect.predictFrame.remote(frame))
-    task = generate_emotion_video(all_emotions, vid_path)
+    task = generate_emotion_video(all_emotions, vid_path, size)
     logging.info(task)
     
 celery.register_task(create_user)
@@ -308,6 +311,43 @@ def dashboard():
                            userinfo=session[constants.JWT_PAYLOAD],
                            userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
 
+@app.route('/uploadsection')
+@requires_auth
+def uploadsection():
+    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+    logging.info(user)
+    if user is None:
+        task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
+        logging.info(task.task_id)
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+
+    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
+    logging.info(user)
+    return render_template('upload.html',
+                           userinfo=session[constants.JWT_PAYLOAD],
+                           userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
+
+@app.route('/allvideos')
+@requires_auth
+def allvideos():
+    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+    logging.info(user)
+    if user is None:
+        task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
+        logging.info(task.task_id)
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+
+    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
+    logging.info(user)
+
+    #get all videos for user with this user id
+    return render_template('allvideos.html',
+                            #allVideos=----
+                           userinfo=session[constants.JWT_PAYLOAD],
+                           userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
+
 @app.route('/dashboard', methods=['POST'])
 @requires_auth
 def upload_file():
@@ -315,7 +355,6 @@ def upload_file():
         user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
 
         if 'file' not in request.files:
-            flash('No file part')
             return redirect(request.url)
         file = request.files['file']
         if file.filename == '':
@@ -337,8 +376,8 @@ def upload_file():
             logging.info(vid.video_path)
 
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id), str(vid.id)))
-            flash('Successfully Uploaded')
-            return render_template('result.html', 
+            return render_template('allvideos.html', 
+                                    prettyName=file.filename,
                                     fileName=os.path.join(str(user.id), str(vid.id)),
                                     userinfo=session[constants.JWT_PAYLOAD],
                                     userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
