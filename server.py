@@ -150,14 +150,15 @@ def generate_emotion_video(ray_list, vid_path, size):
     #     size = (width,height)
     #     break
     cap.release()
-    out = cv2.VideoWriter(vid_path + '_emotion.mp4',cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
+    vid_id = int(vid_path.split("/")[-1])
+    out = cv2.VideoWriter(vid_path + '_emotion.webm',cv2.VideoWriter_fourcc(*'vp80'), fps, size)
     ray_list = ray.get(ray_list)
     for iterx in ray_list:
         out.write(iterx[1])
 
     out.release()
     logging.info(vid_path[len(UPLOAD_FOLDER) + 1:])
-    video = Video.query.filter_by(video_path=vid_path[len(UPLOAD_FOLDER) + 1:]).first()
+    video = Video.query.filter_by(id=vid_id).first()
     video.processed = True
     db.session.commit()
     return 1
@@ -254,6 +255,7 @@ def process_vid(vid_path):
         all_emotions.append(detect.predictFrame.remote(frame))
     task = generate_emotion_video(all_emotions, vid_path, size)
     logging.info(task)
+    return redirect('/allvideos')
     
 celery.register_task(create_user)
 celery.register_task(create_vid)
@@ -263,17 +265,14 @@ celery.register_task(add_vid_path)
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route("/process_vid/<int:user_id>/<int:video_id>")
-def vid(user_id, video_id):
-    logging.info("In Function")
+def start_vid_processing(user_id, video_id):
+    logging.info("In Start processing Function")
     vid_path = os.path.join(app.config["UPLOAD_FOLDER"], str(user_id), str(video_id))
     logging.info(vid_path)
     start = time.time()
-    task = process_vid.remote(vid_path)
-    logging.info(task)
+    process_vid.remote(vid_path)
     end = time.time()
     logging.info(end - start)
-    return redirect(url_for('dashboard'))
 
 @app.route('/dashboard')
 @requires_auth
@@ -326,10 +325,10 @@ def allvideos():
 
     user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
     logging.info(user)
-
-    #get all videos for user with this user id
+    video_list = Video.query.filter_by(user_id=user.id).all()
+    video_list = video_list[::-1]
     return render_template('allvideos.html',
-                            #allVideos=----
+                           videos = video_list,
                            userinfo=session[constants.JWT_PAYLOAD],
                            userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
 
@@ -361,11 +360,8 @@ def upload_file():
             logging.info(vid.video_path)
 
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id), str(vid.id)))
-            return render_template('allvideos.html', 
-                                    prettyName=file.filename,
-                                    fileName=os.path.join(str(user.id), str(vid.id)),
-                                    userinfo=session[constants.JWT_PAYLOAD],
-                                    userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
+            start_vid_processing(vid.user_id,vid.id)
+            return redirect('/allvideos')
         else:
             flash('Allowed file type is mp4')
             return redirect(request.url)
