@@ -169,14 +169,15 @@ def generate_emotion_video(ray_list, vid_path, size):
     #     size = (width,height)
     #     break
     cap.release()
-    out = cv2.VideoWriter(vid_path + '_emotion.mp4',cv2.VideoWriter_fourcc(*'MP4V'), fps, size)
+    vid_id = int(vid_path.split("/")[-1])
+    out = cv2.VideoWriter(vid_path + '_emotion.webm',cv2.VideoWriter_fourcc(*'vp80'), fps, size)
     ray_list = ray.get(ray_list)
     for iterx in ray_list:
         out.write(iterx[1])
 
     out.release()
     logging.info(vid_path[len(UPLOAD_FOLDER) + 1:])
-    video = Video.query.filter_by(video_path=vid_path[len(UPLOAD_FOLDER) + 1:]).first()
+    video = Video.query.filter_by(id=vid_id).first()
     video.processed = True
     db.session.commit()
     return 1
