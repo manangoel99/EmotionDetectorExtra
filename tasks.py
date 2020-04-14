@@ -1,5 +1,5 @@
 from server import celery, db
-from server import User, Video
+from models import User,Video
 import logging
 
 @celery.task(bind=True)
