@@ -116,6 +116,20 @@ def logout():
     params = {'returnTo': url_for('home', _external=True), 'client_id': AUTH0_CLIENT_ID}
     return redirect(auth0.api_base_url + '/v2/logout?' + urlencode(params))
 
+def get_emotion_list(ray_list):
+	seq = {}
+	seq['angry']=0
+	seq['disgust']=0
+	seq['fear']=0
+	seq['happy']=0
+	seq['sad']=0
+	seq['surprise']=0
+	seq['neutral']=0
+	for it in ray.get(ray_list):
+		for it1 in it:
+			seq[it1] += 1
+	return seq
+
 
 def generate_emotion_video(ray_list, vid_path, size):
     cap = cv2.VideoCapture(vid_path)
@@ -131,10 +145,11 @@ def generate_emotion_video(ray_list, vid_path, size):
     cap.release()
     vid_id = int(vid_path.split("/")[-1])
     out = cv2.VideoWriter(vid_path + '_emotion.webm',cv2.VideoWriter_fourcc(*'vp80'), fps, size)
+    emotions_map = get_emotion_list(ray_list,0)
+    print(emotions_map)
     ray_list = ray.get(ray_list)
     for iterx in ray_list:
         out.write(iterx[1])
-
     out.release()
     logging.info(vid_path[len(UPLOAD_FOLDER) + 1:])
     video = Video.query.filter_by(id=vid_id).first()
