@@ -13,7 +13,7 @@
         <link href="/public/navbar.css" rel="stylesheet">
     </head>
     <body class="home" style="background-color: #e7e7e7e7">
-        <nav class="navbar navbar-default app-navbar">
+        <nav class="navbar navbar-default app-navbar navbar-fixed-top">
                 <div class="container-fluid">
                     <div class="navbar-header">
                     <a class="navbar-brand"><span class="color-red">Emotion</span>Detector</a>
@@ -26,32 +26,56 @@
                     </ul>
             </div>
         </nav>
-        
-        <div id="upload-section" class="wrapper">
-            <div class="container">
-                {% if videos|length > 0 %}
-                    <h1>All Vidoes</h1>
-                    {% for video in videos %}
-                    <h3>{{video.video_title}}</h3>
-                        {% if video.processed == True %}
-                            <div class="show-video">
-                                <div class="embed-responsive embed-responsive-16by9">
-                                    <video controls autoplay class="embed-responsive-item">
-                                        <source src="{{ url_for('static', filename=video.video_path+'_emotion.webm') }}" type="video/webm">
-                                        Your browser does not support the video tag.
-                                    </video>
-                                </div> 
-                            </div>
+
+        <div class="upload-container">
+            {% if videos|length > 0 %}
+                <h1>All Videos</h1>
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th class="text-center">Video</th>
+                      <th class="text-center">Status</th>
+                      <th class="text-center">Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {% for video in videos %}
+                  <tr>
+                      <td class="text-center">{{video.video_title}}</td>
+                      <td class="text-center">
+                        {% if video.processed == False %}
+                        <div class="color-green">Complete</div>
                         {% else %}
-                            <p>This video is still processing... </p>
+                        <div class="color-orange">Processing...</div>
                         {% endif %}
-                    {% endfor %}
-                      
-                {% else %}
-                    <h1>You have no processed videos yet.</h1>
-                    <p>Upload a video to start processing!</p>
-                {% endif %}
-            </div>
+                    </td>
+                    <td class="text-center">
+                        {% if video.processed == False %}
+                        <button class="show-video-link" onclick="showVideo()">Play This Video</button>
+                        {% else %}
+                        Not Ready
+                        {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %} 
+                </tbody>
+                </table>
+            {% else %}
+                <h1>You have no processed videos yet.</h1>
+                <p>Upload a video to start processing!</p>
+            {% endif %}    
         </div>
     </body>
+    <script>
+        function trigger(e){
+            if (document.getElementById('show-video').style.visibility == 'hidden')
+            {
+                document.getElementById('show-video').style.visibility='visible';
+                document.getElementById('show-video-button').innerHTML='Close Player';
+            } else {
+                document.getElementById('show-video').style.visibility='hidden';
+                document.getElementById('show-video-button').innerHTML='Play Processed Video';
+            }
+        }
+    </script>
 </html>
