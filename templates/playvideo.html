@@ -21,49 +21,21 @@
                     <ul class="nav navbar-nav">
                     <li><a href="/dashboard">Home</a></li>
                     <li><a href="/uploadsection">Upload Video</a></li>
-                    <li class="active"><a href="/allvideos">All Videos</a></li>
+                    <li><a href="/allvideos">All Videos</a></li>
                     <li><a href="/logout">Logout</a></li>
                     </ul>
             </div>
         </nav>
-
+        <h1>{{ video_name }}</h1>
         <div class="upload-container">
-            {% if videos|length > 0 %}
-                <h1>All Videos</h1>
-                <table class="table table-striped">
-                  <thead>
-                    <tr>
-                      <th class="text-center">Video</th>
-                      <th class="text-center">Status</th>
-                      <th class="text-center">Link</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                  {% for video in videos %}
-                  <tr>
-                      <td class="text-center">{{video.video_title}}</td>
-                      <td class="text-center">
-                        {% if video.processed == False %}
-                        <div class="color-green">Complete</div>
-                        {% else %}
-                        <div class="color-orange">Processing...</div>
-                        {% endif %}
-                    </td>
-                    <td class="text-center">
-                        {% if video.processed == False %}
-                        <a href="{{ url_for('playvideo', video_path=video.video_path, video_name=video.video_title) }}" target="_blank">Play Processed Video</a>
-                        {% else %}
-                        Not Ready
-                        {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %} 
-                </tbody>
-                </table>
-            {% else %}
-                <h1>You have no processed videos yet.</h1>
-                <p>Upload a video to start processing!</p>
-            {% endif %}    
+            <div class="show-video">
+                <div class="embed-responsive embed-responsive-16by9">
+                    <video controls autoplay class="embed-responsive-item">
+                        <source src="{{ url_for('static', filename=video_path) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div> 
+            </div>
         </div>
     </body>
 </html>
