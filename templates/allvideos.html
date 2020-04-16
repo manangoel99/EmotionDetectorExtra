@@ -15,7 +15,7 @@
 
     </head>
     <body class="home" style="background-color: #e7e7e7e7">
-        <nav class="navbar navbar-default app-navbar">
+        <nav class="navbar navbar-default app-navbar navbar-fixed-top">
                 <div class="container-fluid">
                     <div class="navbar-header">
                     <a class="navbar-brand"><span class="color-red">Emotion</span>Detector</a>
@@ -28,36 +28,47 @@
                     </ul>
             </div>
         </nav>
-        
-        <div id="upload-section" class="wrapper">
-            <div class="container" id="vid_list">
-                {% if videos|length > 0 %}
-                    <h1>All Vidoes</h1>
-                    {% for video in videos %}
-                    <div id="vid_{{ video.id }}">
-                        <h3>{{video.video_title}}</h3>
-                            {% if video.processed == True %}
-                                <div class="show-video">
-                                    <div class="embed-responsive embed-responsive-16by9">
-                                        <video controls autoplay class="embed-responsive-item">
-                                            <source src="{{ url_for('static', filename=video.video_path+'_emotion.webm') }}" type="video/webm">
-                                            Your browser does not support the video tag.
-                                        </video>
-                                    </div> 
-                                </div>
-                            {% else %}
-                                <p>This video is still processing... </p>
-                            {% endif %}
-                    </div>
 
-                    {% endfor %}
-                      
-                {% else %}
-                    <h1>You have no processed videos yet.</h1>
-                    <p>Upload a video to start processing!</p>
-                {% endif %}
-            </div>
-        </div>
+        <div class="upload-container">
+            {% if videos|length > 0 %}
+                <h1>All Videos</h1>
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th class="text-center">Id</th>  
+                      <th class="text-center">Title</th>
+                      <th class="text-center">Status</th>
+                      <th class="text-center">Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {% for video in videos %}
+                  <tr id="vid_{{ video.id }}">
+                      <td class="text-center">{{ video.id }}</td>
+                      <td class="text-center">{{video.video_title}}</td>
+                      <td class="text-center">
+                        {% if video.processed == True %}
+                        <div class="color-green">Complete</div>
+                        {% else %}
+                        <div class="color-orange">Processing...</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if video.processed == True %}
+                        <a href="{{ url_for('playvideo', video_path=video.video_path, video_name=video.video_title) }}" target="_blank">Play Processed Video</a>
+                        {% else %}
+                        Not Ready
+                        {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %} 
+                </tbody>
+                </table>
+            {% else %}
+                <h1>You have no processed videos yet.</h1>
+                <p>Upload a video to start processing!</p>
+            {% endif %}    
+        
     </body>
     <script>
         orig_state = []
@@ -107,20 +118,27 @@
                         }
 
                         for (let i = 0; i < not_matching_ids.length; i++) {
-                            text = "<h3>"+ response[not_matching_ids[i]]["video_title"] +"</h3>\n";
+                            text = "<td class='text-center'>"+response[not_matching_ids[i]]["id"]+"</td>\n"
+                            text += "<td class='text-center'>"+ response[not_matching_ids[i]]["video_title"] +"</td>\n";
                             if (curr_state[not_matching_ids[i]] == true) {
-                                text += "<div class='show-video'>\n"
-                                text += "<div class='embed-responsive embed-responsive-16by9'>\n"
-                                text += "<video controls autoplay class='embed-responsive-item'>\n"
-                                url = "/public/" + response[not_matching_ids[i]]["video_path"] + "_emotion.webm";
-                                text += "<source src='" + url + "' type='video/webm'>\n";
-                                text += "Your browser does not support the video tag.\n";
-                                text += "</video>";
-                                text += "</div>";
-                                text += "</div>";
+                                text += "<td class='text-center'><div class='color-green'>Complete</div></td>\n"
+                                text += "<td class='text-center'>"
+                                text += '<a href="'
+                                url = response[not_matching_ids[i]]["video_path"]
+                                title = response[not_matching_ids[i]]["video_title"]
+                                console.log(url)
+                                console.log(title)
+                                text += "/playvideo?video_path="
+                                text += url
+                                text += "&video_name="
+                                text += title 
+                                text += '">Play Processed Video</a></td>'
+                                console.log(text)
+                        
                             }
                             else {
-                                text += "<p>This video is still processing... </p>"
+                                text += "<td class='text-center'><div class='color-orange'>Processing...</div></td>"
+                                text += "<td class='text-center'>Not Ready</td>"
                             }
                             $("#vid_" + not_matching_ids[i]).html(text);
                         }
