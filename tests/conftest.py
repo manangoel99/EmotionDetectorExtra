@@ -30,7 +30,7 @@ def app_def():
 def client(app_def):
     yield app_def.test_client()
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def db(app_def):
     db_.drop_all()
     db_.create_all()
@@ -44,3 +44,4 @@ def session(db):
     db.session.begin_nested()
     yield db.session
     db.session.rollback()
+    db.session.close()
