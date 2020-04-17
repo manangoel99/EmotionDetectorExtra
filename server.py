@@ -157,13 +157,13 @@ def create_plot(ray_list, vid_path):
             values=valuesList,
             marker={
                 'colors':[
-                    'rgb(255, 0, 0)',
-                    'rgb(0, 255, 0)',
-                    'rgb(0, 0, 255)',
-                    'rgb(255, 255, 0)',
-                    'rgb(255, 0, 255)',
-                    'rgb(0, 255, 255)',
-                    'rgb(0, 0, 0)',
+                    '#e16552',
+                    '#447c69',
+                    '#993767',
+                    '#74c493',
+                    '#3c8e9d',
+                    '#e9d78e',
+                    '#e4bf80',
                 ]
             }
         )
@@ -340,9 +340,6 @@ def dashboard():
         # task = create_user.apply(session[constants.JWT_PAYLOAD]['email'])
         task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
         logging.info(task.task_id)
-        # while task.ready() == False:
-        #     continue
-        # done = ray.get(task)
         try:
             user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
             os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
@@ -354,9 +351,13 @@ def dashboard():
         logging.info(user)
     except:
         user = None
+    try: 
+        video_count = len(Video.query.filter_by(user_id=user.id).all())
+    except:
+        video_count = 0        
     return render_template('dashboard.html',
-                           userinfo=session[constants.JWT_PAYLOAD],
-                           userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
+                           video_count=video_count,
+                           userinfo=session[constants.JWT_PAYLOAD])
 
 @app.route('/uploadsection')
 @requires_auth
@@ -465,7 +466,7 @@ def upload_file():
             return redirect('/allvideos')
         else:
             flash('Allowed file type is mp4')
-            return redirect(request.url)
+            return redirect('/uploadsection')
 
 @app.route("/getVidStatus", methods=['GET'])
 @requires_auth
