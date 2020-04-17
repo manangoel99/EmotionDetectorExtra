@@ -1,5 +1,3 @@
-"""Python Flask WebApp Auth0 integration example
-"""
 import glob
 import json
 import logging
@@ -35,9 +33,12 @@ ray.init(num_cpus=4, ignore_reinit_error=True)
 
 logging.basicConfig(level=logging.DEBUG)
 
-ENV_FILE = find_dotenv()
-if ENV_FILE:
-    load_dotenv(ENV_FILE)
+try:
+    ENV_FILE = find_dotenv()
+    if ENV_FILE:
+        load_dotenv(ENV_FILE)
+except IOError:
+    print("Error in opening the ENV file")
 
 AUTH0_CALLBACK_URL = env.get(constants.AUTH0_CALLBACK_URL)
 AUTH0_CLIENT_ID = env.get(constants.AUTH0_CLIENT_ID)
@@ -46,36 +47,43 @@ AUTH0_DOMAIN = env.get(constants.AUTH0_DOMAIN)
 AUTH0_BASE_URL = 'https://' + AUTH0_DOMAIN
 AUTH0_AUDIENCE = env.get(constants.AUTH0_AUDIENCE)
 UPLOAD_FOLDER = './public/'
-ALLOWED_EXTENSIONS = set(['mp4', 'avi', 'mkv'])
+ALLOWED_EXTENSIONS = set(['mp4'])
 
 
-app = Flask(__name__, static_url_path='/public', static_folder='./public')
-app.secret_key = constants.SECRET_KEY
-app.debug = True
-app.config.from_object("config.Config")
+try:
+    app = Flask(__name__, static_url_path='/public', static_folder='./public')
+    app.secret_key = constants.SECRET_KEY
+    app.debug = True
+    app.config.from_object("config.Config")
+except:
+    print("Error in creating Flask application")
 
 db = SQLAlchemy(app)
 
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
-celery.conf.update(app.config)
+try:
+    celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+except:
+    print("Error in creating Celery application")
 
 from models import User,Video
 from tasks import create_user, create_vid, add_vid_path
 
-oauth = OAuth(app)
-
-auth0 = oauth.register(
-    'auth0',
-    client_id=AUTH0_CLIENT_ID,
-    client_secret=AUTH0_CLIENT_SECRET,
-    api_base_url=AUTH0_BASE_URL,
-    access_token_url=AUTH0_BASE_URL + '/oauth/token',
-    authorize_url=AUTH0_BASE_URL + '/authorize',
-    client_kwargs={
-        'scope': 'openid profile email',
-    },
-)
-
+try:
+    oauth = OAuth(app)
+    auth0 = oauth.register(
+        'auth0',
+        client_id=AUTH0_CLIENT_ID,
+        client_secret=AUTH0_CLIENT_SECRET,
+        api_base_url=AUTH0_BASE_URL,
+        access_token_url=AUTH0_BASE_URL + '/oauth/token',
+        authorize_url=AUTH0_BASE_URL + '/authorize',
+        client_kwargs={
+            'scope': 'openid profile email',
+        },
+    )
+except:
+    print("Error in creating OAuth application")
 
 def requires_auth(f):
     @wraps(f)
@@ -178,22 +186,34 @@ def generate_emotion_video(ray_list, vid_path, size):
     #     break
     cap.release()
     vid_id = int(vid_path.split("/")[-1])
-    out = cv2.VideoWriter(vid_path + '_emotion.webm',cv2.VideoWriter_fourcc(*'vp80'), fps, size)
-    ray_list = ray.get(ray_list)
-    create_plot(ray_list, vid_path)
-    for iterx in ray_list:
-        out.write(iterx[1])
+    try:
+        out = cv2.VideoWriter(vid_path + '_emotion.webm',cv2.VideoWriter_fourcc(*'vp80'), fps, size)
+    except:
+        print("Error in creating an output file")
+    try:
+        ray_list = ray.get(ray_list)
+    except:
+        print("Error in getting emotion distribution for the uploaded video")
+    try:
+        create_plot(ray_list, vid_path)
+    except:
+        print("Error in generating a Pie Chart plot")
 
-    out.release()
-    logging.info(vid_path[len(UPLOAD_FOLDER) + 1:])
-    video = Video.query.filter_by(id=vid_id).first()
-    video.processed = True
-    db.session.commit()
-    return 1
+    try:
+        for iterx in ray_list:
+            out.write(iterx[1])
+        out.release()
+        logging.info(vid_path[len(UPLOAD_FOLDER) + 1:])
+        video = Video.query.filter_by(id=vid_id).first()
+        video.processed = True
+        db.session.commit()
+        return 1
+    except:
+        print("Error in generating the output video")
+        return 0  
 
 @ray.remote
 class Model(object):
-
 	def __init__(self):
 		from keras.models import load_model
 		emotion_model_path = './notebooks/model.hdf5'
@@ -267,7 +287,10 @@ class Model(object):
 def process_vid(vid_path):
     logging.info("Process Vid")
     logging.info(vid_path)
-    cap = cv2.VideoCapture(vid_path)
+    try:
+        cap = cv2.VideoCapture(vid_path)
+    except:
+        print("Error in VideoCapture")
     all_emotions = []
     detect = Model.remote()
     frames = []
@@ -294,19 +317,25 @@ def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def start_vid_processing(user_id, video_id):
-    logging.info("In Start processing Function")
-    vid_path = os.path.join(app.config["UPLOAD_FOLDER"], str(user_id), str(video_id))
-    logging.info(vid_path)
-    start = time.time()
-    process_vid.remote(vid_path)
-    end = time.time()
-    logging.info(end - start)
+    try:
+        logging.info("In Start processing Function")
+        vid_path = os.path.join(app.config["UPLOAD_FOLDER"], str(user_id), str(video_id))
+        logging.info(vid_path)
+        start = time.time()
+        process_vid.remote(vid_path)
+        end = time.time()
+        logging.info(end - start)
+    except:
+        print("Error in sending asynchronous video processing request")
 
 @app.route('/dashboard')
 @requires_auth
 def dashboard():
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-    logging.info(user)
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        logging.info(user)
+    except:
+        user = None
     if user is None:
         # task = create_user.apply(session[constants.JWT_PAYLOAD]['email'])
         task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
@@ -314,11 +343,17 @@ def dashboard():
         # while task.ready() == False:
         #     continue
         # done = ray.get(task)
-        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-        os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+        try:
+            user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+            os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+        except:
+            user = None
 
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
-    logging.info(user)
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
+        logging.info(user)
+    except:
+        user = None
     return render_template('dashboard.html',
                            userinfo=session[constants.JWT_PAYLOAD],
                            userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
@@ -326,16 +361,24 @@ def dashboard():
 @app.route('/uploadsection')
 @requires_auth
 def uploadsection():
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-    logging.info(user)
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        logging.info(user)
+    except:
+        user = None
     if user is None:
         task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
         logging.info(task.task_id)
-        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-        os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
-
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
-    logging.info(user)
+        try:
+            user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+            os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+        except:
+            user = None
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
+        logging.info(user)
+    except:
+        user = None
     return render_template('upload.html',
                            userinfo=session[constants.JWT_PAYLOAD],
                            userinfo_pretty=json.dumps(session[constants.JWT_PAYLOAD], indent=4))
@@ -343,18 +386,27 @@ def uploadsection():
 @app.route('/allvideos')
 @requires_auth
 def allvideos():
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-    logging.info(user)
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        logging.info(user)
+    except:
+        user = None
     if user is None:
         task = create_user.apply(args=[session[constants.JWT_PAYLOAD]['email']])
         logging.info(task.task_id)
-        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-        os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
-
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
-    logging.info(user)
-    video_list = Video.query.filter_by(user_id=user.id).all()
-    video_list = video_list[::-1]
+        try:
+            user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+            os.mkdir(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id)))
+        except:
+            user = None
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first() 
+        logging.info(user)
+        video_list = Video.query.filter_by(user_id=user.id).all()
+        video_list = video_list[::-1]
+    except:
+        user = None
+    
     return render_template('allvideos.html',
                            videos = video_list,
                            userinfo=session[constants.JWT_PAYLOAD],
@@ -365,9 +417,11 @@ def allvideos():
 def playvideo():
     video_path = request.args.get('video_path', None)
     video_name = request.args.get('video_name', None)
-    with open(app.config["UPLOAD_FOLDER"] + "/" + video_path +"_plot.json", "r") as openfile: 
-        plot = json.load(openfile) 
-
+    try:
+        with open(app.config["UPLOAD_FOLDER"] + "/" + video_path +"_plot.json", "r") as openfile: 
+            plot = json.load(openfile) 
+    except:
+        print("Error in importing Pie Chart visualisation")
     return render_template('playvideo.html',
                            video_path = video_path,
                            video_name = video_name,
@@ -377,7 +431,10 @@ def playvideo():
 @requires_auth
 def upload_file():
     if request.method == 'POST':
-        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        try:
+            user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        except:
+            user = None
 
         if 'file' not in request.files:
             return redirect(request.url)
@@ -400,7 +457,10 @@ def upload_file():
             logging.info(vid.id)
             logging.info(vid.video_path)
 
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id), str(vid.id)))
+            try:
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], str(user.id), str(vid.id)))
+            except:
+                print("Error in saving video")
             start_vid_processing(vid.user_id,vid.id)
             return redirect('/allvideos')
         else:
@@ -410,15 +470,17 @@ def upload_file():
 @app.route("/getVidStatus", methods=['GET'])
 @requires_auth
 def getVidStatus():
-    user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
-    
-    vids = Video.query.filter_by(user_id=user.id).all()
-    vids_json = {}
-    for vid in vids:
-        vids_json[vid.id] = {
-            "id" : vid.id,
-            "video_path" : vid.video_path,
-            "video_title" : vid.video_title,
-            "processed" : vid.processed
-        }
+    try:
+        user = User.query.filter_by(email=session[constants.JWT_PAYLOAD]['email']).first()
+        vids = Video.query.filter_by(user_id=user.id).all()
+        vids_json = {}
+        for vid in vids:
+            vids_json[vid.id] = {
+                "id" : vid.id,
+                "video_path" : vid.video_path,
+                "video_title" : vid.video_title,
+                "processed" : vid.processed
+            }    
+    except:
+        user = None
     return jsonify(vids_json)
