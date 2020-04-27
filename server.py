@@ -514,11 +514,7 @@ def getVidStatus():
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
-    response = e.get_response()
-    response.data = json.dumps({
-        "code": e.code,
-        "name": e.name,
-        "description": e.description,
-    })
-    response.content_type = "application/json"
-    return response
+    return render_template('error.html',
+                           error_code = e.code,
+                           error_name = e.name,
+                           error_description=e.description)
