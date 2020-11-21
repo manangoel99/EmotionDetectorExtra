@@ -5,8 +5,11 @@ This sample demonstrates how to add authentication to a Python web app using Aut
 # Running the App
 
 Install Docker from https://docs.docker.com/engine/install/ubuntu/
+
 Install docker-compose from https://docs.docker.com/compose/install/
+
 To run docker without sudo use https://docs.docker.com/engine/install/linux-postinstall/
+
 Once installed 
 ```
 git clone https://github.com/manangoel99/EmotionDetectorExtra.git
@@ -77,16 +80,4 @@ enterprise identity systems like **Windows Azure AD, Google Apps, Active Directo
 1. Go to [Auth0](https://auth0.com) and click Sign Up.
 2. Use Google, GitHub or Microsoft Account to login.
 
-## Issue Reporting
-
-If you have found a bug or if you have a feature request, please report them at this repository issues section.
-Please do not report security vulnerabilities on the public GitHub issue tracker. 
-The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues.
-
-## Author
-
-[Auth0](https://auth0.com)
-
-## License
-
-This project is licensed under the MIT license. See the [LICENSE](LICENCE) file for more info.
+Please set the ```AUTH0_CLIENT_ID```, ```AUTH0_DOMAIN``` and ```AUTH0_CLIENT_SECRET```.
