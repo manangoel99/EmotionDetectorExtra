@@ -98,6 +98,8 @@ def requires_auth(f):
 # Controllers API
 @app.route('/')
 def home():
+    if constants.PROFILE_KEY in session:
+        return redirect(url_for('dashboard'))
     return render_template('home.html')
 
 @app.route('/callback')
