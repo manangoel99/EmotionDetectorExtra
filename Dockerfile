@@ -1,7 +1,7 @@
 FROM python:3.7-slim-stretch
 
-RUN apt-get -y update \
-	&& apt-get install -y --fix-missing \
+RUN apt -y update \
+	&& apt install -y --fix-missing \
     build-essential \
     cmake \
     gfortran \
